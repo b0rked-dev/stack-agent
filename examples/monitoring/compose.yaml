@@ -9,7 +9,6 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
-  stack-agent-data:
 
 services:
   stack-agent:
@@ -24,8 +23,8 @@ services:
       # - STACK_AGENT_DEFAULT_TOKEN=${STACK_AGENT_DEFAULT_TOKEN}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./config.yaml:/etc/stack-agent/config.yaml:ro
-      - stack-agent-data:/var/lib/stack-agent
+      - ./config.yaml:/opt/stack-agent/config.yaml:ro
+      - ./data:/opt/stack-agent/data
     ports:
       - "2112:2112"
     healthcheck:
