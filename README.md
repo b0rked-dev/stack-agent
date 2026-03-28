@@ -36,7 +36,7 @@ cp config.example.yaml /opt/stack-agent/config.yaml
 
 ```bash
 # /opt/stack-agent/.env
-HOST_SERVICES_TOKEN=ghp_abc123...
+STACK_AGENT_DEFAULT_TOKEN=ghp_abc123...
 chmod 600 /opt/stack-agent/.env
 ```
 
@@ -53,13 +53,22 @@ services:
   stack-agent:
     image: ghcr.io/rcarson/stack-agent:latest
     restart: unless-stopped
+    ports:
+      - "2112:2112"
     environment:
-      - HOST_SERVICES_TOKEN=${HOST_SERVICES_TOKEN}
+      - STACK_AGENT_DEFAULT_TOKEN=${STACK_AGENT_DEFAULT_TOKEN}
       - STACK_AGENT_LOG_LEVEL=info
+      - STACK_AGENT_HTTP_ADDR=:2112
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2112/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/stack-agent/config.yaml:/etc/stack-agent/config.yaml:ro
-      - /opt/stack-agent/data:/var/lib/stack-agent
+      - ./config.yaml:/opt/stack-agent/config.yaml:ro
+      - ./data:/opt/stack-agent/data
 ```
 
 View logs with:
@@ -85,14 +94,14 @@ stacks:
     repo: https://github.com/example/host-services.git
     path: stacks/immich
     branch: main
-    token: ${HOST_SERVICES_TOKEN}
-    env_file: /etc/stacks/immich.env
+    token: ${MY_REPO_TOKEN}
+    env_file: immich.env
     poll_interval: 60
 
   - name: nextcloud
     repo: https://github.com/example/host-services.git
     path: stacks/nextcloud
-    env_file: /etc/stacks/nextcloud.env
+    env_file: nextcloud.env
     poll_interval: 120
 ```
 
@@ -124,16 +133,16 @@ Any config value can reference a host environment variable using `${VAR_NAME}` s
 Tokens are never written to disk inside the container and never appear in log output. Pass them into the container via environment variables:
 
 ```yaml
-# compose.yml environment section
+# compose.yaml environment section
 environment:
-  - HOST_SERVICES_TOKEN=${HOST_SERVICES_TOKEN}
+  - STACK_AGENT_DEFAULT_TOKEN=${STACK_AGENT_DEFAULT_TOKEN}
 ```
 
 ```yaml
-# config.yml
+# config.yaml
 stacks:
   - name: mystack
-    token: ${HOST_SERVICES_TOKEN}
+    token: ${STACK_AGENT_DEFAULT_TOKEN}
 ```
 
 Token resolution order: per-stack `token` → `defaults.token` → empty (public repo).
@@ -152,6 +161,8 @@ Token resolution order: per-stack `token` → `defaults.token` → empty (public
 |---|---|
 | `STACK_AGENT_CONFIG` | Path to the config file. Equivalent to `--config`. |
 | `STACK_AGENT_LOG_LEVEL` | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`. |
+| `STACK_AGENT_HTTP_ADDR` | Listen address for the HTTP server exposing `/healthz` and `/metrics`. Defaults to `:2112`. Change if port 2112 is already in use on the host (e.g. `STACK_AGENT_HTTP_ADDR=:9100`). |
+| `STACK_AGENT_DEFAULT_TOKEN` | Default auth token for private repos. Used when no per-stack `token` is set. |
 
 ## Observability
 
@@ -161,7 +172,16 @@ Every successful deploy logs: stack name, old hash, new hash, and duration.
 
 Every error logs: stack name, operation, and error string. Tokens are redacted from all error messages before logging.
 
-Set `STACK_AGENT_LOG_LEVEL=debug` to see hash comparisons and poll timing. There is no metrics endpoint in v1 — `docker logs stack-agent` is the intended interface.
+Set `STACK_AGENT_LOG_LEVEL=debug` to see hash comparisons and poll timing.
+
+stack-agent exposes two HTTP endpoints on `STACK_AGENT_HTTP_ADDR` (default `:2112`):
+
+| Endpoint | Description |
+|---|---|
+| `GET /healthz` | Returns `{"status":"ok","version":"...","uptime":"..."}` |
+| `GET /metrics` | Prometheus metrics — scrape with your Prometheus instance |
+
+See `examples/monitoring/` for a Grafana dashboard and Prometheus scrape config.
 
 ## Building
 
@@ -202,4 +222,4 @@ go test -tags integration ./internal/compose/...
 - **Image updates** — use [Watchtower](https://github.com/containrrr/watchtower) or similar.
 - **Multi-host coordination** — each host is fully autonomous.
 - **Rollback** — out of scope for v1. Fix forward by updating the repo.
-- **Web UI or REST API** — there is none. Use `docker logs`.
+- **Web UI** — there is none. Use `docker logs` and the Prometheus metrics endpoint.

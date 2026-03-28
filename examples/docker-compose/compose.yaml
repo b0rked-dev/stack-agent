@@ -5,9 +5,13 @@ services:
     ports:
       - "2112:2112"
     environment:
+      # Token for private repos. Resolves via STACK_AGENT_DEFAULT_TOKEN env var.
+      # Remove if all your repos are public.
       - STACK_AGENT_DEFAULT_TOKEN=${STACK_AGENT_DEFAULT_TOKEN}
       - STACK_AGENT_LOG_LEVEL=info
-      - STACK_AGENT_HTTP_ADDR=
+      # Address for the HTTP server that exposes /healthz and /metrics (Prometheus).
+      # Defaults to :2112 when unset. Change if port 2112 is already in use.
+      - STACK_AGENT_HTTP_ADDR=:2112
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2112/healthz || exit 1"]
       interval: 30s
