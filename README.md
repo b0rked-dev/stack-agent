@@ -28,7 +28,7 @@ mkdir -p /opt/stack-agent/data
 **2. Write a config file.**
 
 ```bash
-cp config.example.yml /opt/stack-agent/config.yaml
+cp config.example.yaml /opt/stack-agent/config.yaml
 # Edit /opt/stack-agent/config.yaml for your stacks
 ```
 
@@ -46,7 +46,7 @@ chmod 600 /opt/stack-agent/.env
 cd /opt/stack-agent && docker compose up -d
 ```
 
-The `compose.yml` in this repository is the deployment manifest for the agent itself. Copy it to `/opt/stack-agent/compose.yml` and adjust the volume mounts if needed:
+The `compose.yaml` in this repository is the deployment manifest for the agent itself. Copy it to `/opt/stack-agent/compose.yaml` and adjust the volume mounts if needed:
 
 ```yaml
 services:

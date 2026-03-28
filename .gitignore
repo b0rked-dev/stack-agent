@@ -17,13 +17,13 @@
 !README.md
 !LICENSE
 !Dockerfile
-!compose.yml
-!config.example.yml
+!compose.yaml
+!config.example.yaml
 !*.md
-!.github/workflows/ci.yml
-!.github/workflows/release.yml
+!.github/workflows/ci.yaml
+!.github/workflows/release.yaml
 !.pre-commit-config.yaml
-!.golangci.yml
+!.golangci.yaml
 
 # ...even if they are in subdirectories
 !*/
