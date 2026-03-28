@@ -57,6 +57,37 @@ stacks:
 	}
 }
 
+// TestNoStacksConfigured verifies that the agent starts and shuts down cleanly
+// when the config file has no stacks — no panic, exit code 0.
+func TestNoStacksConfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "config.yml")
+	if err := os.WriteFile(cfgPath, []byte("stacks: []\n"), 0644); err != nil {
+		t.Fatalf("writing temp config: %v", err)
+	}
+
+	done := make(chan int, 1)
+	go func() {
+		var stdout, stderr bytes.Buffer
+		done <- run([]string{"--config", cfgPath}, &stdout, &stderr)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
+		t.Fatalf("sending SIGTERM: %v", err)
+	}
+
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Errorf("expected exit code 0 with no stacks, got %d", code)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("run() did not shut down within 5 seconds")
+	}
+}
+
 // TestSIGTERMCleanShutdown verifies that sending SIGTERM causes the run loop
 // to exit cleanly. The test fails if shutdown takes longer than 5 seconds.
 func TestSIGTERMCleanShutdown(t *testing.T) {
