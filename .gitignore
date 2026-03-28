@@ -22,6 +22,8 @@
 !*.md
 !.github/workflows/ci.yml
 !.github/workflows/release.yml
+!.pre-commit-config.yaml
+!.golangci.yml
 
 # ...even if they are in subdirectories
 !*/

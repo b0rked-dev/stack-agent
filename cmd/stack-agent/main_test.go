@@ -199,4 +199,3 @@ stacks:
 		t.Fatal("run() did not shut down within 5 seconds after SIGTERM")
 	}
 }
-
