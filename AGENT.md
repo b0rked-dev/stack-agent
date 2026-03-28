@@ -12,22 +12,18 @@
 - The `test` job must pass before a PR can merge (enforced by branch protection).
 - Always verify linting locally with the **exact pinned version** of golangci-lint before pushing:
   ```sh
-  PATH="$PATH:/home/rc/.local/go/bin" /tmp/golangci-bin/golangci-lint run ./...
+  golangci-lint run ./...
   ```
-- If the golangci-lint binary is not present, install it first:
-  ```sh
-  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /tmp/golangci-bin <version>
-  ```
+- Check `.pre-commit-config.yaml` for the current pinned version.
 
 ## Testing
 
 - Write tests before implementation (see global CLAUDE.md).
 - Run the full test suite before opening a PR:
   ```sh
-  PATH="$PATH:/home/rc/.local/go/bin" go test -race ./...
+  go test -race ./...
   ```
 
 ## Tooling
 
-- Go binary: `/home/rc/.local/go/bin/go`
 - Pre-commit hooks are installed — they run automatically on commit.
