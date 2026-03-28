@@ -338,3 +338,41 @@ stacks:
 		t.Errorf("error should mention 'duplicate', got: %v", err)
 	}
 }
+
+func TestLoad_ImplicitDefaultToken(t *testing.T) {
+	t.Setenv("STACK_AGENT_DEFAULT_TOKEN", "implicit-token")
+
+	p := writeTemp(t, `
+stacks:
+  - name: mystack
+    repo: https://github.com/example/repo.git
+    path: stacks/mystack
+`)
+	cfg, err := Load(p)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Stacks[0].Token != "implicit-token" {
+		t.Errorf("expected implicit token %q, got %q", "implicit-token", cfg.Stacks[0].Token)
+	}
+}
+
+func TestLoad_ExplicitTokenOverridesImplicit(t *testing.T) {
+	t.Setenv("STACK_AGENT_DEFAULT_TOKEN", "implicit-token")
+	t.Setenv("MY_TOKEN", "explicit-token")
+
+	p := writeTemp(t, `
+stacks:
+  - name: mystack
+    repo: https://github.com/example/repo.git
+    path: stacks/mystack
+    token: ${MY_TOKEN}
+`)
+	cfg, err := Load(p)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Stacks[0].Token != "explicit-token" {
+		t.Errorf("expected explicit token %q, got %q", "explicit-token", cfg.Stacks[0].Token)
+	}
+}

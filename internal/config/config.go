@@ -91,6 +91,10 @@ func mergeStack(raw rawStack, defaults rawDefaults) StackConfig {
 		token = raw.Token
 	}
 	token = interpolate(token)
+	// Implicit fallback: if no token was configured, check STACK_AGENT_DEFAULT_TOKEN.
+	if token == "" {
+		token = os.Getenv("STACK_AGENT_DEFAULT_TOKEN")
+	}
 
 	pollInterval := defaults.PollInterval
 	if raw.PollInterval != 0 {

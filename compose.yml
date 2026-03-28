@@ -3,7 +3,7 @@ services:
     image: ghcr.io/rcarson/stack-agent:latest
     restart: unless-stopped
     environment:
-      - HOST_SERVICES_TOKEN=${HOST_SERVICES_TOKEN}
+      - STACK_AGENT_DEFAULT_TOKEN=${STACK_AGENT_DEFAULT_TOKEN}
       - STACK_AGENT_LOG_LEVEL=info
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
