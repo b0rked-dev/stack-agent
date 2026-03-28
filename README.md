@@ -19,28 +19,34 @@ Git operations use [go-git](https://github.com/go-git/go-git), a pure Go impleme
 
 ## Quick start
 
-**1. Write a config file on the host.**
+**1. Create the directory layout on the host.**
 
 ```bash
-sudo mkdir -p /etc/stack-agent
-sudo cp config.example.yml /etc/stack-agent/config.yml
-# Edit /etc/stack-agent/config.yml for your stacks
+mkdir -p /opt/stack-agent/data
 ```
 
-**2. Create a `.env` file with any tokens (chmod 600, keep it outside the repo).**
+**2. Write a config file.**
 
 ```bash
-# /opt/stacks/stack-agent/.env
+cp config.example.yml /opt/stack-agent/config.yaml
+# Edit /opt/stack-agent/config.yaml for your stacks
+```
+
+**3. Create a `.env` file with any tokens (chmod 600).**
+
+```bash
+# /opt/stack-agent/.env
 HOST_SERVICES_TOKEN=ghp_abc123...
+chmod 600 /opt/stack-agent/.env
 ```
 
-**3. Deploy with Docker Compose.**
+**4. Deploy with Docker Compose.**
 
 ```bash
-docker compose up -d
+cd /opt/stack-agent && docker compose up -d
 ```
 
-The `compose.yml` in this repository is the deployment manifest for the agent itself:
+The `compose.yml` in this repository is the deployment manifest for the agent itself. Copy it to `/opt/stack-agent/compose.yml` and adjust the volume mounts if needed:
 
 ```yaml
 services:
@@ -52,9 +58,8 @@ services:
       - STACK_AGENT_LOG_LEVEL=info
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /etc/stack-agent/config.yml:/etc/stack-agent/config.yml:ro
-      - /etc/stacks:/etc/stacks:ro
-      - /var/lib/stack-agent:/var/lib/stack-agent
+      - /opt/stack-agent/config.yaml:/etc/stack-agent/config.yaml:ro
+      - /opt/stack-agent/data:/var/lib/stack-agent
 ```
 
 View logs with:
@@ -65,7 +70,7 @@ docker logs -f stack-agent
 
 ## Configuration
 
-The config file is read from `/etc/stack-agent/config.yml` by default. Override the path with the `--config` flag or the `STACK_AGENT_CONFIG` environment variable.
+The config file is read from `/etc/stack-agent/config.yaml` (or `config.yml`) by default, preferring `.yaml`. Override the path with the `--config` flag or the `STACK_AGENT_CONFIG` environment variable.
 
 ```yaml
 # Global defaults (all overridable per stack)
@@ -137,9 +142,9 @@ Token resolution order: per-stack `token` → `defaults.token` → empty (public
 
 | Method | Example |
 |---|---|
-| Default path | `/etc/stack-agent/config.yml` |
-| `--config` flag | `stack-agent --config /path/to/config.yml` |
-| Environment variable | `STACK_AGENT_CONFIG=/path/to/config.yml` |
+| Default path | `/etc/stack-agent/config.yaml` (falls back to `config.yml`) |
+| `--config` flag | `stack-agent --config /opt/stack-agent/config.yaml` |
+| Environment variable | `STACK_AGENT_CONFIG=/opt/stack-agent/config.yaml` |
 
 ## Environment variables
 
