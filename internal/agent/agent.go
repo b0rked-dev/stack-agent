@@ -11,26 +11,29 @@ import (
 	"github.com/rcarson/stack-agent/internal/compose"
 	"github.com/rcarson/stack-agent/internal/config"
 	"github.com/rcarson/stack-agent/internal/git"
+	"github.com/rcarson/stack-agent/internal/metrics"
 	"github.com/rcarson/stack-agent/internal/state"
 )
 
 // Stack is a single stack poller. One goroutine per configured stack.
 type Stack struct {
-	cfg     config.StackConfig
-	git     git.Client
-	compose compose.Runner
-	state   state.Store
-	log     *slog.Logger
+	cfg      config.StackConfig
+	git      git.Client
+	compose  compose.Runner
+	state    state.Store
+	recorder metrics.Recorder
+	log      *slog.Logger
 }
 
 // NewStack constructs a Stack with the given dependencies.
-func NewStack(cfg config.StackConfig, g git.Client, c compose.Runner, s state.Store) *Stack {
+func NewStack(cfg config.StackConfig, g git.Client, c compose.Runner, s state.Store, rec metrics.Recorder) *Stack {
 	return &Stack{
-		cfg:     cfg,
-		git:     g,
-		compose: c,
-		state:   s,
-		log:     slog.With("stack", cfg.Name),
+		cfg:      cfg,
+		git:      g,
+		compose:  c,
+		state:    s,
+		recorder: rec,
+		log:      slog.With("stack", cfg.Name),
 	}
 }
 
@@ -72,6 +75,7 @@ func (s *Stack) poll(ctx context.Context) {
 	newHash, err := s.git.RemoteHash(ctx, s.cfg.Repo, s.cfg.Branch, s.cfg.Token)
 	if err != nil {
 		s.log.Error("agent: remote hash error", "err", err)
+		s.recorder.RecordPoll(s.cfg.Name, "error")
 		return
 	}
 
@@ -79,12 +83,14 @@ func (s *Stack) poll(ctx context.Context) {
 	oldHash, _ := s.state.Get(s.cfg.Name)
 	if oldHash == newHash {
 		s.log.Debug("agent: no change", "hash", newHash)
+		s.recorder.RecordPoll(s.cfg.Name, "no_change")
 		return
 	}
 
 	// Step 3: sync the path.
 	if err := s.git.SyncPath(ctx, s.cfg.Repo, s.cfg.Branch, s.cfg.Path, s.cfg.WorkDir, s.cfg.Name, s.cfg.Token); err != nil {
 		s.log.Error("agent: sync path error", "err", err)
+		s.recorder.RecordPoll(s.cfg.Name, "error")
 		return
 	}
 
@@ -98,6 +104,7 @@ func (s *Stack) poll(ctx context.Context) {
 	}
 	if composePath == "" {
 		s.log.Error("agent: no compose file found", "dir", composeDir)
+		s.recorder.RecordPoll(s.cfg.Name, "error")
 		return
 	}
 
@@ -107,6 +114,7 @@ func (s *Stack) poll(ctx context.Context) {
 	// Step 6: run compose up.
 	if err := s.compose.Up(ctx, composePath, envFile, s.cfg.Name); err != nil {
 		s.log.Error("agent: compose up error", "err", err)
+		s.recorder.RecordPoll(s.cfg.Name, "error")
 		return
 	}
 
@@ -116,12 +124,14 @@ func (s *Stack) poll(ctx context.Context) {
 		// Continue — deploy succeeded even if we failed to persist the hash.
 	}
 
-	// Step 8: log success.
+	// Step 8: log success and record metrics.
 	s.log.Info("agent: deploy success",
 		"old_hash", oldHash,
 		"new_hash", newHash,
 		"duration", time.Since(start).String(),
 	)
+	s.recorder.RecordPoll(s.cfg.Name, "success")
+	s.recorder.RecordDeploy(s.cfg.Name, "success", time.Since(start))
 }
 
 // resolveEnvFile returns the absolute path to the env file for a stack.

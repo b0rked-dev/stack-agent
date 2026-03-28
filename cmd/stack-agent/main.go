@@ -12,11 +12,14 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/rcarson/stack-agent/internal/agent"
 	"github.com/rcarson/stack-agent/internal/compose"
 	"github.com/rcarson/stack-agent/internal/config"
 	"github.com/rcarson/stack-agent/internal/git"
+	"github.com/rcarson/stack-agent/internal/metrics"
+	"github.com/rcarson/stack-agent/internal/server"
 	"github.com/rcarson/stack-agent/internal/state"
 )
 
@@ -42,6 +45,8 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
+	startTime := time.Now()
+
 	fs := flag.NewFlagSet("stack-agent", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
@@ -81,6 +86,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	httpAddr := os.Getenv("STACK_AGENT_HTTP_ADDR")
+	if httpAddr == "" {
+		httpAddr = ":2112"
+	}
+
 	stackNames := make([]string, len(cfg.Stacks))
 	for i, sc := range cfg.Stacks {
 		stackNames[i] = sc.Name
@@ -90,11 +100,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 		"config", *configPath,
 		"stacks", len(cfg.Stacks),
 		"stack_names", stackNames,
+		"http_addr", httpAddr,
 	)
 
 	if len(cfg.Stacks) == 0 {
 		slog.Warn("no stacks configured — waiting for shutdown signal")
 	}
+
+	// Initialize metrics recorder.
+	rec := metrics.NewPrometheusRecorder()
 
 	// Initialize shared dependencies.
 	gitClient := git.New()
@@ -115,13 +129,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
+	// Start HTTP server in background.
+	go func() {
+		if err := server.New(httpAddr, Version, startTime, rec.Registry()).Run(ctx); err != nil {
+			slog.Error("server exited", "err", err)
+		}
+	}()
+
 	// Spawn one goroutine per stack.
 	var wg sync.WaitGroup
 	for _, stackCfg := range cfg.Stacks {
 		wg.Add(1)
 		go func(sc config.StackConfig) {
 			defer wg.Done()
-			agent.NewStack(sc, gitClient, composeRunner, stateStore).Run(ctx)
+			agent.NewStack(sc, gitClient, composeRunner, stateStore, rec).Run(ctx)
 		}(stackCfg)
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/rcarson/stack-agent/internal/config"
+	"github.com/rcarson/stack-agent/internal/metrics"
 )
 
 // ---------------------------------------------------------------------------
@@ -157,7 +158,7 @@ func TestHashUnchanged(t *testing.T) {
 	st := newMockState()
 	st.data["test-stack"] = "abc123" // pre-seed matching hash
 
-	s := NewStack(stackCfg("test-stack"), g, c, st)
+	s := NewStack(stackCfg("test-stack"), g, c, st, &metrics.NoopRecorder{})
 	runOnce(s)
 
 	c.mu.Lock()
@@ -197,7 +198,7 @@ func TestHashChanged(t *testing.T) {
 	st := newMockState()
 	// stored hash is empty → remote "newHash" differs → deploy expected
 
-	s := NewStack(stackCfg("test-stack"), g, c, st)
+	s := NewStack(stackCfg("test-stack"), g, c, st, &metrics.NoopRecorder{})
 	runOnce(s)
 
 	mu.Lock()
@@ -221,7 +222,7 @@ func TestSyncPathFailure(t *testing.T) {
 	c := &mockCompose{}
 	st := newMockState()
 
-	s := NewStack(stackCfg("test-stack"), g, c, st)
+	s := NewStack(stackCfg("test-stack"), g, c, st, &metrics.NoopRecorder{})
 	runOnce(s)
 
 	c.mu.Lock()
@@ -258,7 +259,7 @@ func TestUpFailure(t *testing.T) {
 	}
 	st := newMockState()
 
-	s := NewStack(stackCfg("test-stack"), g, c, st)
+	s := NewStack(stackCfg("test-stack"), g, c, st, &metrics.NoopRecorder{})
 	runOnce(s)
 
 	st.mu.Lock()
@@ -284,7 +285,7 @@ func TestUpSuccess(t *testing.T) {
 	c := &mockCompose{}
 	st := newMockState()
 
-	s := NewStack(stackCfg("test-stack"), g, c, st)
+	s := NewStack(stackCfg("test-stack"), g, c, st, &metrics.NoopRecorder{})
 	runOnce(s)
 
 	st.mu.Lock()
@@ -309,7 +310,7 @@ func TestContextCancellation(t *testing.T) {
 	c := &mockCompose{}
 	st := newMockState()
 
-	s := NewStack(stackCfg("test-stack"), g, c, st)
+	s := NewStack(stackCfg("test-stack"), g, c, st, &metrics.NoopRecorder{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -346,8 +347,8 @@ func TestConcurrentStacks(t *testing.T) {
 	st1 := newMockState()
 	st2 := newMockState()
 
-	s1 := NewStack(stackCfg("stack1"), makeGit(&calls1), &mockCompose{}, st1)
-	s2 := NewStack(stackCfg("stack2"), makeGit(&calls2), &mockCompose{}, st2)
+	s1 := NewStack(stackCfg("stack1"), makeGit(&calls1), &mockCompose{}, st1, &metrics.NoopRecorder{})
+	s2 := NewStack(stackCfg("stack2"), makeGit(&calls2), &mockCompose{}, st2, &metrics.NoopRecorder{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -385,7 +386,7 @@ func TestPollIntervalRespected(t *testing.T) {
 
 	// PollInterval=0 → time.NewTimer(0) fires immediately, so the loop spins
 	// as fast as it can. We expect many iterations within the window.
-	s := NewStack(stackCfg("test-stack"), g, &mockCompose{}, newMockState())
+	s := NewStack(stackCfg("test-stack"), g, &mockCompose{}, newMockState(), &metrics.NoopRecorder{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -416,7 +417,7 @@ func TestNoComposeFile(t *testing.T) {
 	}
 	st := newMockState()
 
-	s := NewStack(stackCfg("test-stack"), g, c, st)
+	s := NewStack(stackCfg("test-stack"), g, c, st, &metrics.NoopRecorder{})
 	runOnce(s)
 
 	c.mu.Lock()

@@ -2,9 +2,18 @@ services:
   stack-agent:
     image: ghcr.io/rcarson/stack-agent:latest
     restart: unless-stopped
+    ports:
+      - "2112:2112"
     environment:
       - STACK_AGENT_DEFAULT_TOKEN=${STACK_AGENT_DEFAULT_TOKEN}
       - STACK_AGENT_LOG_LEVEL=info
+      - STACK_AGENT_HTTP_ADDR=
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2112/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config.yaml:/opt/stack-agent/config.yaml:ro
