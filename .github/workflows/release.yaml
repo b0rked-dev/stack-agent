@@ -39,7 +39,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/b0rked-dev/steward
+          images: ghcr.io/rcarson/steward
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}

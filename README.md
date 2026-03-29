@@ -53,7 +53,7 @@ The `examples/docker-compose/compose.yaml` in this repository is the deployment 
 ```yaml
 services:
   steward:
-    image: ghcr.io/b0rked-dev/steward:latest
+    image: ghcr.io/rcarson/steward:latest
     restart: unless-stopped
     ports:
       - "2112:2112"
