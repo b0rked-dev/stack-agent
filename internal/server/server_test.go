@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/b0rked-dev/steward/internal/server"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rcarson/steward/internal/server"
 )
 
 func TestHealthz(t *testing.T) {

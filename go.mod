@@ -1,4 +1,4 @@
-module github.com/b0rked-dev/steward
+module github.com/rcarson/steward
 
 go 1.26
 

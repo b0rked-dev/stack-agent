@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/b0rked-dev/steward/internal/config"
-	"github.com/b0rked-dev/steward/internal/metrics"
+	"github.com/rcarson/steward/internal/config"
+	"github.com/rcarson/steward/internal/metrics"
 )
 
 // ---------------------------------------------------------------------------
