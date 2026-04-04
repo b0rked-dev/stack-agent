@@ -86,6 +86,9 @@ func mergeStack(raw rawStack, defaults rawDefaults) StackConfig {
 		branch = raw.Branch
 	}
 	branch = interpolate(branch)
+	if branch == "" {
+		branch = "main"
+	}
 
 	token := defaults.Token
 	if raw.Token != "" {
